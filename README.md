@@ -8,4 +8,4 @@ The demo includes:
 - Content pool
 - Mock API (localStorage)
 
-Files will be added to the `feature/layout-demo` branch.
+Files are added to the `feature/layout-demo` branch.
