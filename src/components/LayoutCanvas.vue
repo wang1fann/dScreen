@@ -17,7 +17,7 @@
           </div>
 
           <div v-if="assigned(slot.id)" class="assigned-item" draggable="true"
-               @dragstart="(e) => onDragStartAssigned(e, slot.id)">
+               @dragstart="onDragStartAssigned($event, slot.id)">
             <div style="font-weight:600">{{ assigned(slot.id).title }}</div>
             <div style="font-size:12px; color:#94a3b8">{{ assigned(slot.id).type }}</div>
           </div>
@@ -38,88 +38,84 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
-export default {
-  props: {
-    layout: Object,
-    contents: Array,
-    slotsMapping: Object
-  },
-  emits: ['update:mapping'],
-  setup(props, { emit }) {
-    const assigned = (slotId) => {
-      const cid = props.slotsMapping && props.slotsMapping[slotId]
-      if (!cid) return null
-      return props.contents.find(c => c.id === cid) || null
-    }
+const props = defineProps({
+  layout: Object,
+  contents: Array,
+  slotsMapping: Object
+})
+const emit = defineEmits(['update:mapping'])
 
-    function onDragStartAssigned(e, fromSlotId) {
-      const payload = { kind: 'assigned', fromSlotId, contentId: props.slotsMapping[fromSlotId] }
+const assigned = (slotId) => {
+  const cid = props.slotsMapping && props.slotsMapping[slotId]
+  if (!cid) return null
+  return props.contents.find(c => c.id === cid) || null
+}
+
+function onDragStartAssigned(e, fromSlotId) {
+  const payload = { kind: 'assigned', fromSlotId, contentId: props.slotsMapping[fromSlotId] }
+  try {
+    e.dataTransfer.setData('application/json', JSON.stringify(payload))
+  } catch (err) {}
+  e.dataTransfer.setData('text/plain', JSON.stringify(payload))
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+function onDragOver(e, slotId) {
+  // visual feedback could be added
+  e.dataTransfer.dropEffect = 'move'
+}
+
+async function onDrop(e, targetSlotId) {
+  const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain')
+  if (!raw) return
+  let payload
+  try { payload = JSON.parse(raw) } catch { return }
+  if (payload.kind === 'content') {
+    // 从内容池拖入
+    const contentId = payload.contentId
+    const cur = props.slotsMapping[targetSlotId]
+    if (cur && cur !== contentId) {
+      // 已有不同内容：询问替换
       try {
-        e.dataTransfer.setData('application/json', JSON.stringify(payload))
-      } catch (err) {}
-      e.dataTransfer.setData('text/plain', JSON.stringify(payload))
-      e.dataTransfer.effectAllowed = 'move'
-    }
-
-    function onDragOver(e, slotId) {
-      // visual feedback could be added
-      e.dataTransfer.dropEffect = 'move'
-    }
-
-    async function onDrop(e, targetSlotId) {
-      const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain')
-      if (!raw) return
-      let payload
-      try { payload = JSON.parse(raw) } catch { return }
-      if (payload.kind === 'content') {
-        // 从内容池拖入
-        const contentId = payload.contentId
-        const cur = props.slotsMapping[targetSlotId]
-        if (cur && cur !== contentId) {
-          // 已有不同内容：询问替换
-          try {
-            await ElMessageBox.confirm('目标区域已有内容，确认替换？', '替换确认', { confirmButtonText: '替换', cancelButtonText: '取消', type: 'warning' })
-            const newMap = { ...props.slotsMapping, [targetSlotId]: contentId }
-            emit('update:mapping', newMap)
-            ElMessage({ type: 'success', message: '已替换' })
-          } catch {
-            // 取消
-          }
-        } else {
-          // 直接放置（为空或相同，则直接设）
-          const newMap = { ...props.slotsMapping, [targetSlotId]: contentId }
-          emit('update:mapping', newMap)
-        }
-      } else if (payload.kind === 'assigned') {
-        const from = payload.fromSlotId
-        const contentId = payload.contentId
-        if (from === targetSlotId) return // 同一区域拖动无效
-        const targetContent = props.slotsMapping[targetSlotId]
-        const newMap = { ...props.slotsMapping }
-        if (!targetContent) {
-          // 目标为空 -> 移动
-          newMap[targetSlotId] = contentId
-          newMap[from] = null
-        } else {
-          // 目标有内容 -> 交换
-          newMap[targetSlotId] = contentId
-          newMap[from] = targetContent
-        }
+        await ElMessageBox.confirm('目标区域已有内容，确认替换？', '替换确认', { confirmButtonText: '替换', cancelButtonText: '取消', type: 'warning' })
+        const newMap = { ...props.slotsMapping, [targetSlotId]: contentId }
         emit('update:mapping', newMap)
+        ElMessage({ type: 'success', message: '已替换' })
+      } catch {
+        // 取消
       }
-    }
-
-    function remove(slotId) {
-      const newMap = { ...props.slotsMapping, [slotId]: null }
+    } else {
+      // 直接放置（为空或相同，则直接设）
+      const newMap = { ...props.slotsMapping, [targetSlotId]: contentId }
       emit('update:mapping', newMap)
-      ElMessage({ type: 'info', message: '已移除' })
     }
-
-    return { assigned, onDragStartAssigned, onDragOver, onDrop, remove }
+  } else if (payload.kind === 'assigned') {
+    const from = payload.fromSlotId
+    const contentId = payload.contentId
+    if (from === targetSlotId) return // 同一区域拖动无效
+    const targetContent = props.slotsMapping[targetSlotId]
+    const newMap = { ...props.slotsMapping }
+    if (!targetContent) {
+      // 目标为空 -> 移动
+      newMap[targetSlotId] = contentId
+      newMap[from] = null
+    } else {
+      // 目标有内容 -> 交换
+      newMap[targetSlotId] = contentId
+      newMap[from] = targetContent
+    }
+    emit('update:mapping', newMap)
   }
+}
+
+function remove(slotId) {
+  const newMap = { ...props.slotsMapping, [slotId]: null }
+  emit('update:mapping', newMap)
+  ElMessage({ type: 'info', message: '已移除' })
 }
 </script>
 

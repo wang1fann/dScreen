@@ -6,14 +6,14 @@
     </div>
 
     <div v-for="c in contents" :key="c.id" class="content-item"
-         draggable="true" @dragstart="handleDragStart($event, c)">
+         draggable="true" @dragstart="(e) => handleDragStart(e, c)">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
           <div style="font-weight:600">{{ c.title }}</div>
           <div style="font-size:12px; color:#9ca3af">{{ c.type }}</div>
         </div>
         <div style="text-align:right">
-          <div v-if="isAssigned(c.id)" style="font-size:12px; color:#fb923c">已分配</div>
+          <div v-if="isAssigned(c.id)" style="font-size:12px; color:#fb923c">已分���</div>
           <div v-else style="font-size:12px; color:#94a3b8">未分配</div>
         </div>
       </div>
@@ -21,30 +21,25 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    contents: Array,
-    slotsMapping: Object
-  },
-  emits: [],
-  setup(props) {
-    function handleDragStart(e, item) {
-      const payload = { kind: 'content', contentId: item.id }
-      // set both application/json and text/plain to improve compatibility
-      try {
-        e.dataTransfer.setData('application/json', JSON.stringify(payload))
-      } catch (err) {
-        // ignore
-      }
-      e.dataTransfer.setData('text/plain', JSON.stringify(payload))
-      e.dataTransfer.effectAllowed = 'copy'
-    }
-    function isAssigned(contentId) {
-      return Object.values(props.slotsMapping || {}).includes(contentId)
-    }
-    return { handleDragStart, isAssigned }
+<script setup>
+const props = defineProps({
+  contents: Array,
+  slotsMapping: Object
+})
+
+function handleDragStart(e, item) {
+  const payload = { kind: 'content', contentId: item.id }
+  try {
+    e.dataTransfer.setData('application/json', JSON.stringify(payload))
+  } catch (err) {
+    // ignore
   }
+  e.dataTransfer.setData('text/plain', JSON.stringify(payload))
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
+function isAssigned(contentId) {
+  return Object.values(props.slotsMapping || {}).includes(contentId)
 }
 </script>
 

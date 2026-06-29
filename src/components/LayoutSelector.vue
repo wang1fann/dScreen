@@ -10,28 +10,27 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    layouts: { type: Array, default: () => [] },
-    selectedLayoutId: { type: String, default: null }
-  },
-  emits: ['update:selectedLayoutId'],
-  methods: {
-    select(id) {
-      this.$emit('update:selectedLayoutId', id)
-      // 当切换布局时，父组件会同步 mapping（在 App.vue 中处理）
-    },
-    cardStyle(active) {
-      return {
-        width: '160px',
-        borderRadius: '6px',
-        padding: '6px',
-        background: active ? '#1f2937' : '#0b1220',
-        border: active ? '1px solid #2563eb' : '1px solid #0f1720',
-        cursor: 'pointer'
-      }
-    }
+<script setup>
+import { toRefs } from 'vue'
+
+const props = defineProps({
+  layouts: { type: Array, default: () => [] },
+  selectedLayoutId: { type: String, default: null }
+})
+const emit = defineEmits(['update:selectedLayoutId'])
+
+function select(id) {
+  emit('update:selectedLayoutId', id)
+}
+
+function cardStyle(active) {
+  return {
+    width: '160px',
+    borderRadius: '6px',
+    padding: '6px',
+    background: active ? '#1f2937' : '#0b1220',
+    border: active ? '1px solid #2563eb' : '1px solid #0f1720',
+    cursor: 'pointer'
   }
 }
 </script>
