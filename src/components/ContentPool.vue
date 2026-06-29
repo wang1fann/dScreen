@@ -6,7 +6,7 @@
     </div>
 
     <div v-for="c in contents" :key="c.id" class="content-item"
-         draggable="true" @dragstart="onDragStart(c)">
+         draggable="true" @dragstart="handleDragStart($event, c)">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
           <div style="font-weight:600">{{ c.title }}</div>
@@ -29,17 +29,21 @@ export default {
   },
   emits: [],
   setup(props) {
-    function onDragStart(item) {
-      return (e) => {
-        const payload = { kind: 'content', contentId: item.id }
+    function handleDragStart(e, item) {
+      const payload = { kind: 'content', contentId: item.id }
+      // set both application/json and text/plain to improve compatibility
+      try {
         e.dataTransfer.setData('application/json', JSON.stringify(payload))
-        e.dataTransfer.effectAllowed = 'copy'
+      } catch (err) {
+        // ignore
       }
+      e.dataTransfer.setData('text/plain', JSON.stringify(payload))
+      e.dataTransfer.effectAllowed = 'copy'
     }
     function isAssigned(contentId) {
       return Object.values(props.slotsMapping || {}).includes(contentId)
     }
-    return { onDragStart, isAssigned }
+    return { handleDragStart, isAssigned }
   }
 }
 </script>

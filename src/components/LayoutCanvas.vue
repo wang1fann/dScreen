@@ -17,7 +17,7 @@
           </div>
 
           <div v-if="assigned(slot.id)" class="assigned-item" draggable="true"
-               @dragstart="onDragStartAssigned($event, slot.id)">
+               @dragstart="(e) => onDragStartAssigned(e, slot.id)">
             <div style="font-weight:600">{{ assigned(slot.id).title }}</div>
             <div style="font-size:12px; color:#94a3b8">{{ assigned(slot.id).type }}</div>
           </div>
@@ -39,7 +39,6 @@
 </template>
 
 <script>
-import { computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 export default {
@@ -58,7 +57,10 @@ export default {
 
     function onDragStartAssigned(e, fromSlotId) {
       const payload = { kind: 'assigned', fromSlotId, contentId: props.slotsMapping[fromSlotId] }
-      e.dataTransfer.setData('application/json', JSON.stringify(payload))
+      try {
+        e.dataTransfer.setData('application/json', JSON.stringify(payload))
+      } catch (err) {}
+      e.dataTransfer.setData('text/plain', JSON.stringify(payload))
       e.dataTransfer.effectAllowed = 'move'
     }
 
@@ -68,7 +70,7 @@ export default {
     }
 
     async function onDrop(e, targetSlotId) {
-      const raw = e.dataTransfer.getData('application/json')
+      const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain')
       if (!raw) return
       let payload
       try { payload = JSON.parse(raw) } catch { return }
